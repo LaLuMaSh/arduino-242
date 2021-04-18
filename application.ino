@@ -36,8 +36,8 @@ rgb_lcd lcd;
 
 //if a specific component is connected
 #define LEDs true
-#define BME false
-#define LCD false 
+#define BME true
+#define LCD true 
 int abc = 10;
 String serverName = "localhost";
 
@@ -141,14 +141,21 @@ void saveDataToDb() {
     return;
   }
   static int32_t  temp, humidity, pressure, gas;  // BME readings
+  
+  static char     buf[16];                        // sprintf text buffer
   BME680.getSensorData(temp, humidity, pressure, gas);
 
+  String tem= String((int8_t)(temp / 100)) + "." + (uint8_t)(temp % 100);
+  String hum = String((int8_t)(humidity / 1000)) + "." + String((uint16_t)(humidity % 1000));
+  String pres = String((int16_t)(pressure / 100)) + "." + String((uint8_t)(pressure % 100));
+
+  Serial.println(pres + " " + hum + " " + tem);
   Serial.print("saved pressure: ");
-  Serial.println(post("/api/v1/weather/air_pressure/", "{\"pressure\":" + String(pressure % 100) + "}"));
+  Serial.println(post("/api/v1/weather/air_pressure/", "{\"pressure\":" + pres + "}"));
   Serial.print("saved humidity: ");
-  Serial.println(post("/api/v1/weather/humidity/", "{\"humidity\":" + String(humidity % 1000) + "}"));
+  Serial.println(post("/api/v1/weather/humidity/", "{\"humidity\":" + hum + "}"));
   Serial.print("saved temperature: ");
-  Serial.println(post("/api/v1/weather/temperature/", "{\"temperature\":" + String(temp / 100) + "}"));
+  Serial.println(post("/api/v1/weather/temperature/", "{\"temperature\":" + tem + "}"));
 }
 
 void displayDataLCD() {
@@ -165,8 +172,7 @@ void displayDataLCD() {
   lcd.setCursor(0, 0);
   lcd.print("temp:" + temperature);
   lcd.setCursor(0, 1);
-  lcd.print("p:" + pressure);
-  lcd.setCursor(8, 1);
+  lcd.print("p:" + pressure +" ");
   lcd.print("h:" + humidity);
 }
 
