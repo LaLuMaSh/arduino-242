@@ -9,37 +9,46 @@
 #include <Wire.h>
 
 #include "rgb_lcd.h"
-#include "Zanshin_BME680.h"  // Include the BME680 Sensor library
+#include "Zanshin_BME680.h"
 
 #ifdef __AVR__
  #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
 #endif
 
-#define PIN        6 // On Trinket or Gemma, suggest changing this to 1
-#define NUMPIXELS 10 // Popular NeoPixel ring size
-#define DELAYVAL 10*1000 // Time (in milliseconds) to pause between pixels
-
-char ssid[] = "evg-15926";        // your network SSID (name)
-char pass[] = "bnhs-2xn2-yzj5-uzlf";    // your network password (use for WPA, or use as key for WEP)
-int status = WL_IDLE_STATUS;
-char serverAddress[] = "65.21.62.120";  // server address
-int port = 8080;
-const int colorR = 255;
-const int colorG = 0;
-const int colorB = 0;
-
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-WiFiClient client;
-HttpClient httpClient = HttpClient(client, serverAddress, port);
-BME680_Class BME680;  ///< Create an instance of the BME680 class
-rgb_lcd lcd;
-
 //if a specific component is connected
 #define LEDs true
 #define BME true
 #define LCD true 
-int abc = 10;
-String serverName = "localhost";
+
+//interval
+#define DELAYVAL 10*1000
+
+//WIFI config
+char ssid[] = "evg-15926";        
+char pass[] = "bnhs-2xn2-yzj5-uzlf";
+int status = WL_IDLE_STATUS;
+
+//REST config
+char serverAddress[] = "65.21.62.120";
+int port = 8080;
+
+// LED strip config
+#define PIN        6
+#define NUMPIXELS 10 
+
+// LCD config
+const int colorR = 255;
+const int colorG = 0;
+const int colorB = 0;
+
+//setup all components
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+WiFiClient client;
+HttpClient httpClient = HttpClient(client, serverAddress, port);
+BME680_Class BME680;
+rgb_lcd lcd;
+
+
 
 void setup() {
   setupWifi();
@@ -58,6 +67,10 @@ void loop() {
   delay(DELAYVAL); 
 }
 
+
+//SETUP Methods
+
+
 void setupLCD() {
   if (!LCD) {
     return;
@@ -65,7 +78,6 @@ void setupLCD() {
   lcd.begin(16, 2);   
   lcd.setRGB(colorR, colorG, colorB);
 }
-
 void setupBME680() {
   if (!BME) {
     return;
@@ -86,27 +98,14 @@ void setupBME680() {
   Serial.print(F("- Setting gas measurement to 320\xC2\xB0\x43 for 150ms\n"));  // "�C" symbols
   BME680.setGas(320, 150);  // 320�c for 150 milliseconds
 }
-float altitude(const int32_t press, const float seaLevel = 1013.25);
-float altitude(const int32_t press, const float seaLevel) {
-  static float Altitude;
-  Altitude =
-      44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));
-  return (Altitude);
-}
-
-
-
 void setupWifi() {
-  //Initialize serial and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
+    ;
   }
 
-  // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
     Serial.println("Communication with WiFi module failed!");
-    // don't continue
     while (true);
   }
 
@@ -115,14 +114,11 @@ void setupWifi() {
     Serial.println("Please upgrade the firmware");
   }
 
-  // attempt to connect to WiFi network:
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
 
-    // wait 10 seconds for connection:
     delay(10000);
   }
   Serial.println("Connected to WiFi");
@@ -136,20 +132,22 @@ void setupLEDs() {
   pixels.begin();
 }
 
+
+// LOOP Methods
+
+
 void saveDataToDb() {
   if (!BME) {
     return;
   }
-  static int32_t  temp, humidity, pressure, gas;  // BME readings
+  static int32_t  temp, humidity, pressure, gas;
   
-  static char     buf[16];                        // sprintf text buffer
   BME680.getSensorData(temp, humidity, pressure, gas);
 
-  String tem= String((int8_t)(temp / 100)) + "." + (uint8_t)(temp % 100);
+  String tem = String((int8_t)(temp / 100)) + "." + (uint8_t)(temp % 100);
   String hum = String((int8_t)(humidity / 1000)) + "." + String((uint16_t)(humidity % 1000));
   String pres = String((int16_t)(pressure / 100)) + "." + String((uint8_t)(pressure % 100));
 
-  Serial.println(pres + " " + hum + " " + tem);
   Serial.print("saved pressure: ");
   Serial.println(post("/api/v1/weather/air_pressure/", "{\"pressure\":" + pres + "}"));
   Serial.print("saved humidity: ");
@@ -197,14 +195,8 @@ void displayDataLED() {
 }
 
 
+//HELPER METHODS
 
-// this method makes a HTTP connection to the server:
-boolean httpRequest() {
-  Serial.println(get("/api/v1/weather/air_pressure/"));
-  Serial.println(post("/api/v1/weather/air_pressure/", "{\"pressure\":35.0}"));
-  Serial.println(post("/api/v1/weather/humidity/", "{\"humidity\":20}"));
-  Serial.println(post("/api/v1/weather/temperature/", "{\"temperature\":22.0}"));
-}
 
 String get(String url) {
   httpClient.get(url);
