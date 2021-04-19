@@ -171,7 +171,7 @@ void displayDataLCD() {
   lcd.print("temp:" + temperature);
   lcd.setCursor(0, 1);
   lcd.print("p:" + pressure +" ");
-  lcd.print("h:" + humidity);
+  lcd.print("h:" + humidity + "  ");
 }
 
 void displayDataLED() {
